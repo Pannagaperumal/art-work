@@ -66,33 +66,8 @@ exports.getAdminProducts = asyncErrorHandler(async (req, res, next) => {
 
 // Create Product ---ADMIN
 exports.createProduct = asyncErrorHandler(async (req, res, next) => {
-  let images = [];
-  if (typeof req.body.images === "string") {
-    images.push(req.body.images);
-  } else {
-    images = req.body.images;
-  }
-
-  const imagesLink = [];
-
-  for (let i = 0; i < images.length; i++) {
-    const result = await cloudinary.v2.uploader.upload(images[i], {
-      folder: "products",
-    });
-
-    imagesLink.push({
-      public_id: result.public_id,
-      url: result.secure_url,
-    });
-  }
-
-  const result = await cloudinary.v2.uploader.upload(req.body.logo, {
-    folder: "brands",
-  });
-  const brandLogo = {
-    public_id: result.public_id,
-    url: result.secure_url,
-  };
+  const imagesLink = await uploadImages(req.body.images, "products");
+  const brandLogo = await uploadSingleImage(req.body.logo, "brands");
 
   req.body.brand = {
     name: req.body.brandname,
@@ -100,12 +75,7 @@ exports.createProduct = asyncErrorHandler(async (req, res, next) => {
   };
   req.body.images = imagesLink;
   req.body.user = req.user.id;
-
-  let specs = [];
-  req.body.specifications.forEach((s) => {
-    specs.push(JSON.parse(s));
-  });
-  req.body.specifications = specs;
+  req.body.specifications = parseSpecifications(req.body.specifications);
 
   const product = await Product.create(req.body);
 
@@ -114,6 +84,38 @@ exports.createProduct = asyncErrorHandler(async (req, res, next) => {
     product,
   });
 });
+
+async function uploadImages(images, folder) {
+  if (typeof images === "string") {
+    images = [images];
+  }
+
+  const imagesLink = [];
+  for (let i = 0; i < images.length; i++) {
+    const result = await cloudinary.v2.uploader.upload(images[i], {
+      folder: folder,
+    });
+    imagesLink.push({
+      public_id: result.public_id,
+      url: result.secure_url,
+    });
+  }
+  return imagesLink;
+}
+
+async function uploadSingleImage(image, folder) {
+  const result = await cloudinary.v2.uploader.upload(image, {
+    folder: folder,
+  });
+  return {
+    public_id: result.public_id,
+    url: result.secure_url,
+  };
+}
+
+function parseSpecifications(specifications) {
+  return specifications.map((s) => JSON.parse(s));
+}
 
 // Update Product ---ADMIN
 exports.updateProduct = asyncErrorHandler(async (req, res, next) => {

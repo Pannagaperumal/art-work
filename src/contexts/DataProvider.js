@@ -17,11 +17,11 @@ export function DataProvider({ children }) {
   const [loading, setLoading] = useState(false);
   const [, setError] = useState(false);
 
-  const getAllSneakers = async () => {
+  const getAllSneakers = async (page = 1, limit = 10) => {
     try {
       setError(false);
       setLoading(true);
-      const response = await getAllProducts();
+      const response = await getAllProducts(page, limit);
       if (response.request.status === 200) {
         setLoading(false);
         dispatch({
@@ -57,7 +57,7 @@ export function DataProvider({ children }) {
   };
 
   useEffect(() => {
-    getAllSneakers();
+    getAllSneakers(1, 10); // Initial call with first page and limited products
     getCategories();
   }, []);
 

@@ -8,38 +8,48 @@ const sendEmail = require("../utils/sendEmail");
 exports.newOrder = asyncErrorHandler(async (req, res, next) => {
   const { shippingInfo, orderItems, paymentInfo, totalPrice } = req.body;
 
-  const orderExist = await Order.findOne({ paymentInfo });
-
-  if (orderExist) {
+  if (await isOrderExist(paymentInfo)) {
     return next(new ErrorHandler("Order Already Placed", 400));
   }
 
-  const order = await Order.create({
-    shippingInfo,
-    orderItems,
-    paymentInfo,
-    totalPrice,
-    paidAt: Date.now(),
-    user: req.user._id,
-  });
+  const order = await createOrder(req.user._id, shippingInfo, orderItems, paymentInfo, totalPrice);
 
-  await sendEmail({
-    email: req.user.email,
-    templateId: process.env.SENDGRID_ORDER_TEMPLATEID,
-    data: {
-      name: req.user.name,
-      shippingInfo,
-      orderItems,
-      totalPrice,
-      oid: order._id,
-    },
-  });
+  await sendOrderConfirmationEmail(req.user.email, req.user.name, shippingInfo, orderItems, totalPrice, order._id);
 
   res.status(201).json({
     success: true,
     order,
   });
 });
+
+async function isOrderExist(paymentInfo) {
+  return await Order.findOne({ paymentInfo });
+}
+
+async function createOrder(userId, shippingInfo, orderItems, paymentInfo, totalPrice) {
+  return await Order.create({
+    shippingInfo,
+    orderItems,
+    paymentInfo,
+    totalPrice,
+    paidAt: Date.now(),
+    user: userId,
+  });
+}
+
+async function sendOrderConfirmationEmail(email, name, shippingInfo, orderItems, totalPrice, orderId) {
+  await sendEmail({
+    email,
+    templateId: process.env.SENDGRID_ORDER_TEMPLATEID,
+    data: {
+      name,
+      shippingInfo,
+      orderItems,
+      totalPrice,
+      oid: orderId,
+    },
+  });
+}
 
 // Get Single Order Details
 exports.getSingleOrderDetails = asyncErrorHandler(async (req, res, next) => {

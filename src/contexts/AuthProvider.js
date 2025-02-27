@@ -62,7 +62,7 @@ export const AuthProvider = ({ children }) => {
       }
     } catch (error) {
       setLoginLoading(false);
-      setError(error.response.data.errors[0]);
+      setError(error.response && error.response.data && error.response.data.errors ? error.response.data.errors[0] : "An unexpected error occurred.");
     } finally {
       setLoginLoading(false);
     }

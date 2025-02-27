@@ -1,9 +1,10 @@
 import "./ProductListingSection.css";
 import Tilt from "react-parallax-tilt";
-import React from "react";
+import React, { useState, useEffect, useCallback } from "react";
 
 import { useData } from "../../../../contexts/DataProvider.js";
 import { Link } from "react-router-dom";
+import { getAllProducts } from "../../../../services/services";
 import { getCategoryWiseProducts } from "../../../../helpers/filter-functions/category";
 import { getRatedProducts } from "../../../../helpers/filter-functions/ratings";
 import { getPricedProducts } from "../../../../helpers/filter-functions/price";
@@ -16,7 +17,39 @@ import { useUserData } from "../../../../contexts/UserDataProvider.js";
 import { BsFillStarFill } from "react-icons/bs";
 
 export const ProductListingSection = () => {
-  const { state } = useData();
+  const { state, dispatch, loading } = useData();
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+
+  const loadMoreProducts = useCallback(async () => {
+    if (loading || !hasMore) return;
+    try {
+      const response = await getAllProducts(page + 1, 10);
+      if (response.data.products.length > 0) {
+        dispatch({
+          type: "GET_ALL_PRODUCTS_FROM_API",
+          payload: [
+            ...state.allProductsFromApi,
+            ...response.data.products
+          ],
+        });
+        setPage(page + 1);
+      } else {
+        setHasMore(false);
+      }
+    } catch (error) {
+      console.error("Failed to load more products", error);
+    }
+  }, [page, hasMore, loading, dispatch, state.allProductsFromApi]);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      if (window.innerHeight + document.documentElement.scrollTop !== document.documentElement.offsetHeight || loading) return;
+      loadMoreProducts();
+    };
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, [loadMoreProducts, loading]);
   const {
     isProductInCart,
     isProductInWishlist,
